@@ -14,6 +14,8 @@ let playButton;
 let addColorButton;
 let eraseButton;
 let quantizeButton;
+let randomButton;
+let getEquivColorButton;
 
 let rainbowBox;
 let rainbowShader;
@@ -28,17 +30,19 @@ let palette;
 
 const rectSize = 50;
 
-const waveStartX = 700;
+const waveStartX = 600;
 const waveWidth = 100;
-const waveStartY = 100;
+const waveStartY = 70;
 const waveHeight = 200;
+
+const rainbowY = 290;
 
 function preload(){
   font = loadFont('data/Lostar.ttf');
 }
 
 function setup() {
-  let canv = createCanvas(800,800);
+  let canv = createCanvas(800,800,WEBGL);
   //canv.style("margin","auto");
   //canv.style("display","block");
   
@@ -51,38 +55,38 @@ function setup() {
   colorPickerY = 100;
   
   sliderR = createSlider(0,255,255);
-  sliderR.position(80,90);
+  sliderR.position(80,100);
   sliderG = createSlider(0,255,0);
-  sliderG.position(80,190);
+  sliderG.position(80,160);
   sliderB = createSlider(0,255,0);
-  sliderB.position(80,290);
+  sliderB.position(80,220);
   
   brightnessSlider = createSlider(0.0,2.0,1.0,0.01);
-  brightnessSlider.position(80,620);
+  brightnessSlider.position(135,550);
   brightnessSlider.mousePressed(activateBrightnessSlider);
   brightnessSlider.mouseReleased(deactivateBrightnessSlider);
   satSlider = createSlider(0.1,3.0,0.5,0.01);
-  satSlider.position(80,660);
+  satSlider.position(135,570);
   satSlider.mousePressed(activateBrightnessSlider);
   satSlider.mouseReleased(deactivateBrightnessSlider);
   
   tempoSlider = createSlider(1,120,60,1);
-  tempoSlider.position(400,620);
+  tempoSlider.position(410,360);
   
   textBoxR = createInput();
-  textBoxR.position(300,90);
+  textBoxR.position(300,100);
   textBoxR.value('255');
-  textBoxR.mousePressed(enteringNumber = true);
+  textBoxR.mousePressed(enterNumber);
   
   textBoxG = createInput();
-  textBoxG.position(300,190);
+  textBoxG.position(300,160);
   textBoxG.value('0');
-  textBoxG.mousePressed(enteringNumber = true);
+  textBoxG.mousePressed(enterNumber);
   
   textBoxB = createInput();
-  textBoxB.position(300,290);
+  textBoxB.position(300,220);
   textBoxB.value('0');
-  textBoxB.mousePressed(enteringNumber = true);
+  textBoxB.mousePressed(enterNumber);
   
   toggleSoundButton = createButton('audio on');
   toggleSoundButton.position(20,80);
@@ -104,6 +108,14 @@ function setup() {
   quantizeButton.position(20,240);
   quantizeButton.mousePressed(quantizePaletteToTET);
   
+  randomButton = createButton('random');
+  randomButton.position(20,280);
+  randomButton.mousePressed(addRandom);
+  
+  getEquivColorButton = createButton('get harmonically equivalent color');
+  getEquivColorButton.position(500,40);
+  getEquivColorButton.mousePressed(getHarmonicEquivalent);
+  
   oscR = new p5.TriOsc();
   oscG = new p5.SinOsc();
   oscB = new p5.SinOsc();
@@ -119,26 +131,27 @@ function setup() {
   oscB.start();
   
   title = createGraphics(700,110,WEBGL);
+  title.background(255,255,255,0);
   title.textFont(font);
   title.textSize(66);
   title.textAlign(CENTER);
   title.rotateY(radians(15));
-  title.background(255);
-  title.strokeWeight(10);
-  title.stroke(255,0,0);
   title.fill(0);
   title.text("Colorsynth",20,20,0);
   
-  colorMode(RGB);
+  textFont(font);
+  
+  //colorMode(RGB);
+  blendMode(OVERLAY);
 }
 
 function draw() {
-  //console.log(palette);
+  //push();
+  translate(-width/2,-height/2);
   background(255);
-  image(title,100,0);
-  if(colorPicking && mouseX>80 && mouseX<330 && mouseY>350 && mouseY<600){
+  if(colorPicking && mouseX>80 && mouseX<330 && mouseY>rainbowY && mouseY<(rainbowY+250)){
     colorPickerX = mouseX - 80;
-    colorPickerY = mouseY - 350;
+    colorPickerY = mouseY - rainbowY;
   }
   
   //updateControls();
@@ -148,9 +161,13 @@ function draw() {
   palette.update();
   updateOscillators();
   palette.display();
-  drawColors();
-  drawOscWaveform();
   
+  image(title,0,0);
+  
+  drawOscWaveform();    
+
+  drawColors(); 
+
   rainbowShader.setUniform('brightness',brightnessSlider.value());
   rainbowShader.setUniform('saturation',satSlider.value());
   rainbowBox.clear();
@@ -159,12 +176,16 @@ function draw() {
   rainbowBox.noStroke();
   rainbowBox.rect(0,0,rainbowBox.width,rainbowBox.height);
   //rainbowBox.ellipse(rainbowBox.width/2,rainbowBox.height/2,rainbowBox.width/2,rainbowBox.height/2);
-  image(rainbowBox,80,350);
+  image(rainbowBox,80,rainbowY);
   noFill();
   strokeWeight(1);
   stroke(0);
-  rect(80+colorPickerX,350+colorPickerY,10,10,2);
+  rect(80+colorPickerX-5,rainbowY+colorPickerY-5,10,10,2);
 }
+
+//function windowResized(){
+//  resizeCanvas(800,windowHeight);
+//}
 
 function keyPressed(){
   if(keyCode == ENTER){
@@ -175,28 +196,63 @@ function keyPressed(){
   }
 }
 
+function getHarmonicEquivalent(){
+  let r1 = red/green;
+  let r2 = green/blue;
+  let biggest = (r1>r2)?r1:r2;
+  
+  let randomColor = floor(random(0,256/biggest));
+  red = randomColor;
+  green = randomColor*r1;
+  blue = randomColor*r2;
+  ////there's def a better way to do this
+  //let which = floor(random(0,3));
+  //switch(which){
+  //  case 0:
+  //    red = randomColor;
+  //    green = red*r1;
+  //    blue = green*r2;
+  //    break;
+  //  case 1:
+  //    green = randomColor;
+  //    red = green*r1;
+  //    blue = red*r2;
+  //    break;
+  //  case 2:
+  //    blue = randomColor;
+  //    green = blue*r1;
+  //    red = green*r2;
+  //    break;
+  //}
+  sliderR.value(red);
+  sliderG.value(green);
+  sliderB.value(blue);
+  //updateOscillators();
+}
+
 class Palette{
   constructor(){
     this.colors = [];
     this.activeColor = 0;
     this.timer = 60;
     this.isPlaying = false;
+    this.isBeingEdited = false;
   }
   display(){
     let x = 360;
-    let y = 360;
+    let y = rainbowY+10;
     if(this.isPlaying){
       stroke(0);
-      rect(x-10,y-10,width-x,height-y,5);
+      rect(x-10,y-10,250,10+60*ceil(this.colors.length/4),5);
     }
     let i = 0;
     for(let c of this.colors){
       fill(c.levels[0],c.levels[1],c.levels[2]);
-      strokeWeight((i==this.activeColor?2:0));
+      strokeWeight((i==this.activeColor?(this.isBeingEdited?4:2):0));
       rect(x,y,50,50,5);
       x+=60;
       i++;
-      if(x>width-50){
+      if(x>=560){
         x = 360;
         y += 60;
       }
@@ -219,9 +275,13 @@ class Palette{
       }
     }
   }
+  addRandom(){
+    this.addColor(random(0,256),random(0,256),random(0,256));
+  }
   addColor(r,g,b){
     let c = color(r,g,b);
     this.colors.push(c);
+    tempoSlider.position(410,300+ceil(this.colors.length/4)*60);
   }
   toggle(){
     if(palette.colors.length>0){
@@ -229,6 +289,38 @@ class Palette{
     }
     else{
       this.isPlaying = false;
+    }
+  }
+  checkForClick(){
+    //if you're picking colors, don't disable editing
+    if(colorPicking){
+      return;
+    }
+    else{
+      let x = 360;
+      let y = rainbowY+10;
+      let i = 0;
+      for(let c of this.colors){
+        //if the mouse clicks a square, then it's being edited
+        if(mouseX>x && mouseX<(x+50) && mouseY>y && mouseY<(y+50)){
+          this.isBeingEdited = true;
+          this.activeColor = i;
+          red = this.colors[i].levels[0];
+          green = this.colors[i].levels[1];
+          blue = this.colors[i].levels[2];
+          sliderR.value(red);
+          sliderG.value(green);
+          sliderB.value(blue);
+          return;
+        }
+        x+=60;
+        i++;
+        if(x>=560){
+          x = 360;
+          y += 60;
+        }
+      }
+      this.isBeingEdited = false;
     }
   }
 }
@@ -243,15 +335,22 @@ function addColor(){
   }
 }
 
+function addRandom(){
+  palette.addRandom();
+}
+
 function playPalette(){
   palette.toggle();
   playButton.html(palette.isPlaying?"pause":"play");
 }
 
 function erasePalette(){
-  palette.isPlaying = false;
+  if(palette.isPlaying){
+    playPalette();
+  }
   palette.activeColor = 0;
   palette.colors = [];
+  tempoSlider.position(410,360);
 }
 
 function activateBrightnessSlider(){
@@ -259,6 +358,9 @@ function activateBrightnessSlider(){
 }
 function deactivateBrightnessSlider(){
   colorPicking = false;
+}
+function enterNumber(){
+  enteringNumber = true;
 }
 //got this formula from 
 //https://www.rapidtables.com/convert/color/hsv-to-rgb.html
@@ -322,6 +424,11 @@ function updateColors(){
     blue = sliderB.value();
     updateTextBoxes();
   }
+  if(palette.isBeingEdited){
+    palette.colors[palette.activeColor].levels[0] = red;
+    palette.colors[palette.activeColor].levels[1] = green;
+    palette.colors[palette.activeColor].levels[2] = blue;
+  }
 }
 
 function updateOscillators(){
@@ -342,7 +449,7 @@ function drawOscWaveform(){
   noStroke();
   fill(red,green,blue);
   push();
-  translate(500,100);
+  translate(400,70);
   rect(0,0,200,200);
   pop();
   let waveform = fft.waveform();
@@ -361,7 +468,7 @@ function drawOscWaveform(){
 function drawColors(){
   for(let i = 0; i<3; i++){
     push();
-    translate(250,100+i*100);
+    translate(250,110+i*60);
     rectMode(CENTER);
     noStroke();
     switch(i){
@@ -436,9 +543,10 @@ function toggleSound(){
 }
 
 function mousePressed(){
-  if(mouseX>80 && mouseX<330 && mouseY>350 && mouseY<600){
+  if(mouseX>80 && mouseX<330 && mouseY>rainbowY && mouseY<(rainbowY+250)){
     colorPicking = true;
     colorPickerX = mouseX - 80;
-    colorPickerY = mouseY - 350;
+    colorPickerY = mouseY - rainbowY;
   }
+  palette.checkForClick();
 }

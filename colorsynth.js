@@ -4,6 +4,12 @@ let red,blue,green;
 let soundEngineStarted = false;
 
 let oscR,oscG,oscB,fft;
+let minRed = 0;
+let maxRed = 1000;
+let minGreen = 0;
+let maxGreen = 1000;
+let minBlue = 0;
+let maxBlue = 1000;
 
 let sliderR,sliderG,sliderB,brightnessSlider,tempoSlider,satSlider;
 
@@ -42,12 +48,16 @@ function preload(){
 }
 
 function setup() {
+  let div = createDiv();
+  div.id("mainDiv");
   let canv = createCanvas(800,800,WEBGL);
+  canv.parent("mainDiv");
   //canv.style("margin","auto");
   //canv.style("display","block");
   
   rainbowBox = createGraphics(250,250,WEBGL);
   rainbowShader = rainbowBox.createShader(rainbowVert,rainbowFrag);
+  
   
   palette = new Palette();
   
@@ -61,6 +71,10 @@ function setup() {
   sliderB = createSlider(0,255,0);
   sliderB.position(80,220);
   
+  sliderR.parent("mainDiv");
+  sliderG.parent("mainDiv");
+  sliderB.parent("mainDiv");
+  
   brightnessSlider = createSlider(0.0,2.0,1.0,0.01);
   brightnessSlider.position(135,550);
   brightnessSlider.mousePressed(activateBrightnessSlider);
@@ -72,6 +86,10 @@ function setup() {
   
   tempoSlider = createSlider(1,120,60,1);
   tempoSlider.position(410,360);
+  
+  brightnessSlider.parent("mainDiv");
+  satSlider.parent("mainDiv");
+  tempoSlider.parent("mainDiv");
   
   textBoxR = createInput();
   textBoxR.position(300,100);
@@ -87,6 +105,10 @@ function setup() {
   textBoxB.position(300,220);
   textBoxB.value('0');
   textBoxB.mousePressed(enterNumber);
+  
+  textBoxR.parent("mainDiv");
+  textBoxB.parent("mainDiv");
+  textBoxG.parent("mainDiv");
   
   toggleSoundButton = createButton('audio on');
   toggleSoundButton.position(20,80);
@@ -104,9 +126,9 @@ function setup() {
   eraseButton.position(20,200);
   eraseButton.mousePressed(erasePalette);
   
-  quantizeButton = createButton('quantize');
+  quantizeButton = createButton('quantize to TET');
   quantizeButton.position(20,240);
-  quantizeButton.mousePressed(quantizePaletteToTET);
+  quantizeButton.mousePressed(quantize);
   
   randomButton = createButton('random');
   randomButton.position(20,280);
@@ -115,6 +137,14 @@ function setup() {
   getEquivColorButton = createButton('get harmonically equivalent color');
   getEquivColorButton.position(500,40);
   getEquivColorButton.mousePressed(getHarmonicEquivalent);
+  
+  toggleSoundButton.parent("mainDiv");
+  addColorButton.parent("mainDiv");
+  playButton.parent("mainDiv");
+  eraseButton.parent("mainDiv");
+  quantizeButton.parent("mainDiv");
+  randomButton.parent("mainDiv");
+  getEquivColorButton.parent("mainDiv");
   
   oscR = new p5.TriOsc();
   oscG = new p5.SinOsc();
@@ -183,9 +213,6 @@ function draw() {
   rect(80+colorPickerX-5,rainbowY+colorPickerY-5,10,10,2);
 }
 
-//function windowResized(){
-//  resizeCanvas(800,windowHeight);
-//}
 
 function keyPressed(){
   if(keyCode == ENTER){
@@ -197,37 +224,28 @@ function keyPressed(){
 }
 
 function getHarmonicEquivalent(){
-  let r1 = red/green;
-  let r2 = green/blue;
+  
+  console.log(oscR.getFreq());
+  console.log(oscG.getFreq());
+  console.log(oscB.getFreq());
+  let r1 = oscR.getFreq()/oscG.getFreq();
+  let r2 = oscR.getFreq()/oscB.getFreq();
   let biggest = (r1>r2)?r1:r2;
   
-  let randomColor = floor(random(0,256/biggest));
-  red = randomColor;
-  green = randomColor*r1;
-  blue = randomColor*r2;
-  ////there's def a better way to do this
-  //let which = floor(random(0,3));
-  //switch(which){
-  //  case 0:
-  //    red = randomColor;
-  //    green = red*r1;
-  //    blue = green*r2;
-  //    break;
-  //  case 1:
-  //    green = randomColor;
-  //    red = green*r1;
-  //    blue = red*r2;
-  //    break;
-  //  case 2:
-  //    blue = randomColor;
-  //    green = blue*r1;
-  //    red = green*r2;
-  //    break;
-  //}
+  let c0 = floor(random(100,min(1000/biggest,1000)));
+  let c1 = c0*r1;
+  let c2 = c0*r2;
+  
+  console.log(r1);
+  console.log(r2);
+  
+  red = map(c0,0,1000,0,255);
+  green = map(c1,0,1000,0,255);
+  blue = map(c2,0,1000,0,255);
+  
   sliderR.value(red);
   sliderG.value(green);
   sliderB.value(blue);
-  //updateOscillators();
 }
 
 class Palette{
@@ -432,9 +450,20 @@ function updateColors(){
 }
 
 function updateOscillators(){
-  oscR.freq(map(red,0,255,0,1000));
-  oscG.freq(map(green,0,255,0,1000));
-  oscB.freq(map(blue,0,255,0,1000));
+  //all osc's the same range
+  oscR.freq(map(red,0,255,minRed,maxRed));
+  oscG.freq(map(green,0,255,minGreen,maxGreen));
+  oscB.freq(map(blue,0,255,minBlue,maxBlue));
+  
+  //osc's on different octaves
+  //oscR.freq(map(red,0,255,65.40639,130.8128));
+  //oscG.freq(map(green,0,255,130.8128,261.6256));
+  //oscB.freq(map(blue,0,255,261.6256,523.2511));
+  
+  //osc's all from c2-c5
+  //oscR.freq(map(red,0,255,65.40639,523.2511));
+  //oscG.freq(map(green,0,255,65.40639,523.2511));
+  //oscB.freq(map(blue,0,255,65.40639,523.2511));
 }
 
 function updateTextBoxes(){
@@ -493,31 +522,48 @@ function log2_12(val){
   return Math.log(val)/Math.log(t12);
 }
 
+function quantize(){
+  if(palette.isPlaying){
+    quantizePaletteToTET();
+  }
+  else{
+    red = map(quantizeFreqToTET(oscR.getFreq()),minRed,maxRed,0,255);
+    green = map(quantizeFreqToTET(oscG.getFreq()),minGreen,maxGreen,0,255);
+    blue = map(quantizeFreqToTET(oscB.getFreq()),minBlue,maxBlue,0,255);
+    sliderR.value(red);
+    sliderG.value(green);
+    sliderB.value(blue);
+  }
+}
+function quantizeFreqToTET(frequency){
+  const twelfthRoot = pow(2,1/12);
+  //quantized number of times you need to multiply a base freq by 12r2
+  const f = log(frequency/440)/log(twelfthRoot);
+  let keyNumber = 12*log(frequency/440)/log(2)+49;
+  //let numberOfHalfSteps = (f-floor(f))>=0.5?ceil(f):floor(f);
+  if(keyNumber - floor(keyNumber)>0.5){
+    keyNumber = ceil(keyNumber);
+  }
+  else{
+    keyNumber = floor(keyNumber);
+  }
+  //let newFreq = 440*pow(twelfthRoot,numberOfHalfSteps);
+  
+  let newFreq = pow(twelfthRoot,keyNumber-49)*440;
+  console.log(frequency);
+  console.log(newFreq);
+  return newFreq;
+}
 function quantizePaletteToTET(){
-  const t12 = pow(2.0,1.0/12.0);
-  console.log(palette.colors);
   for(let c of palette.colors){
     let f1 = map(c.levels[0],0,255,0,1000);
     let f2 = map(c.levels[1],0,255,0,1000);
     let f3 = map(c.levels[2],0,255,0,1000);
-    let frequencies = [f1,f2,f3];
-    for(let i = 0; i<3; i++){
-      let testFreq = 55;
-      while(testFreq<frequencies[i]){
-        testFreq*=t12;
-        //console.log(testFreq);
-      }
-      frequencies[i] = testFreq;
-    }
-    f1 = frequencies[0];
-    f2 = frequencies[1];
-    f3 = frequencies[2];
-
-    c.levels[0] = map(f1,0,1000,0,255);
-    c.levels[1] = map(f2,0,1000,0,255);
-    c.levels[2] = map(f3,0,1000,0,255);
+    
+    c.levels[0] = map(quantizeFreqToTET(f1),0,1000,0,255);
+    c.levels[1] = map(quantizeFreqToTET(f2),0,1000,0,255);
+    c.levels[2] = map(quantizeFreqToTET(f3),0,1000,0,255);
   }
-  console.log(palette.colors);
 }
 
 function mouseReleased(){

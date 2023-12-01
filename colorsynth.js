@@ -447,6 +447,7 @@ function updateColors(){
     palette.colors[palette.activeColor].levels[1] = green;
     palette.colors[palette.activeColor].levels[2] = blue;
   }
+  document.getElementsByTagName('html')[0].style.background = "rgb("+red+","+green+","+blue+")";
 }
 
 function updateOscillators(){
